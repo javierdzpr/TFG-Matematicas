@@ -1,0 +1,20 @@
+\documentclass[tikz,border=2mm,11pt]{standalone}
+\usepackage{tikz}
+\usepackage{newtxtext,newtxmath}
+\usetikzlibrary{arrows.meta, positioning}
+
+\begin{document}
+
+\begin{tikzpicture}[node distance=4cm, auto, thick, >=Stealth]
+
+% Cajas con color suave
+\node[draw, rectangle, minimum width=2cm, minimum height=1cm] (S) {S};
+\node[draw, rectangle, minimum width=2cm, minimum height=1cm, right=of S] (I) {I};
+
+% Flechas con parámetros
+\draw[->, thick] (S) -- (I) node[midway, above] {$\beta$};
+\draw[->, thick] (I) .. controls +(down:2cm) and +(down:2cm) .. (S) node[midway, below] {$\alpha$};
+
+\end{tikzpicture}
+
+\end{document}
