@@ -1,0 +1,60 @@
+#SIRS4
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+
+# Ajustar tamaño de la fuente
+plt.rcParams.update({
+    "font.size": 16,
+    "axes.titlesize": 18,
+    "axes.labelsize": 16,
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14
+})
+
+# Parámetros
+beta = 0.3
+alpha = 0.4
+delta = 0.1
+
+# Sistema SIRS reducido a S-I
+def sirs_system(y, beta, alpha, delta):
+    S, I = y
+    R = 1 - S - I
+    dS = -beta*S*I + delta*R
+    dI = beta*S*I - alpha*I
+    return np.array([dS, dI])
+
+# Malla de puntos
+s = np.linspace(0, 1, 20)
+i = np.linspace(0, 1, 20)
+S_mesh, I_mesh = np.meshgrid(s, i)
+
+# Filtrar puntos válidos (S + I < 1)
+valid_points = (S_mesh + I_mesh) < 1
+S_valid = S_mesh[valid_points]
+I_valid = I_mesh[valid_points]
+
+# Calcular derivadas
+dx = np.array([sirs_system([S_valid[k], I_valid[k]], beta, alpha, delta) for k in range(len(S_valid))])
+dx1 = dx[:,0]
+dx2 = dx[:,1]
+
+# Diagrama de fase
+plt.figure(figsize=(7,6))
+plt.quiver(S_valid, I_valid, dx1, dx2, color=[0, 0.4470, 0.7410], angles='xy', scale_units='xy', scale=None, width=0.003)
+
+# Calcular punto de equilibrio
+S_star, I_star = alpha/beta, delta*(beta-alpha)/(beta*(alpha+delta))
+
+plt.plot(1,0, 'ro', markersize=6, label='Equilibrio libre de enfermedad (1,0)')
+plt.xlabel('S',fontsize=16)
+plt.ylabel('I',fontsize=16)
+plt.axis([-0.05,1.05,-0.05,1.05])
+plt.title(f'Diagrama de fase S-I del modelo SIRS, \n $\\beta={beta}$, $\\alpha={alpha}$, $\\delta={delta}$')
+plt.grid(True)
+plt.legend()
+plt.savefig("SIRS4.pdf", bbox_inches='tight')
+plt.show()

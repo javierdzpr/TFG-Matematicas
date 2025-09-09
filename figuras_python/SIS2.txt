@@ -1,0 +1,72 @@
+# SIS2
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Ajustar tamaño de la fuente
+plt.rcParams.update({
+    "font.size": 16,
+    "axes.titlesize": 18,
+    "axes.labelsize": 16,
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 16
+})
+
+# Declaramos los parámetros del modelo
+beta = 0.3
+alpha = 0.4
+
+
+# Definimos el sistema SIS
+def f(t, x):
+    S, I = x
+    dS = -beta*S*I + alpha*I
+    dI = beta*S*I - alpha*I
+    return np.array([dS, dI])
+
+# Paso RK4
+def rk4_step(t, x, h):
+    F1 = f(t, x)
+    F2 = f(t + h/2, x + h*F1/2)
+    F3 = f(t + h/2, x + h*F2/2)
+    F4 = f(t + h, x + h*F3)
+    return x + (h/6)*(F1 + 2*F2 + 2*F3 + F4)
+
+# Condiciones iniciales
+t0, tf = 0.0, 50.0
+h = 0.01
+t_vals = np.arange(t0, tf + h/2, h)
+n = len(t_vals)
+X = np.zeros((n, 2))
+X[0] = np.array([0.8, 0.2])  # S(0), I(0)
+
+# Integración
+for i in range(n-1):
+    X[i+1] = rk4_step(t_vals[i], X[i], h)
+
+# DataFrame
+df = pd.DataFrame({
+    "t": t_vals,
+    "S": X[:,0],
+    "I": X[:,1],
+    "S+I": X.sum(axis=1)
+})
+
+# Gráfica
+plt.figure(figsize=(8,5))
+plt.plot(df["t"], df["S"], label="S(t)")
+plt.plot(df["t"], df["I"], label="I(t)")
+plt.xlabel("Tiempo t",fontsize=16)
+plt.ylabel("Fracción de la población",fontsize=16)
+plt.title(f"SIS con $\\beta={beta}$, $\\alpha={alpha}$, \n $S(0)=0.8$, $I(0)=0.2$ (h={h})")
+plt.legend(loc='upper right', bbox_to_anchor=(1, 0.89))
+plt.grid(True)
+plt.ylim(top=1.1)
+
+plt.savefig("SIS2.pdf", bbox_inches='tight')
+plt.show()
+
+# Mostrar última fila
+print(df.tail(1))

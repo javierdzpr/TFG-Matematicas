@@ -1,0 +1,113 @@
+#CIR_SIRS3
+
+import numpy as np
+from scipy.stats import ncx2
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.gridspec as gridspec
+
+# Simulación exacta CIR
+def cir_exacta(beta, nu, mu, sigma, dt, rng=None):
+    if rng is None: rng = np.random.default_rng()
+    c = (sigma**2 * (1 - np.exp(-nu*dt))) / (4*nu)
+    d = 4*nu*mu / sigma**2
+    kappa = (4*nu * np.exp(-nu*dt) / (sigma**2 * (1 - np.exp(-nu*dt)))) * beta
+    Z = ncx2.rvs(df=d, nc=kappa, random_state=rng)
+    return c * Z
+
+def sim_cir_exacta(beta0, nu, mu, sigma, T, m, rng=None):
+    if rng is None: rng = np.random.default_rng()
+    dt = T / m
+    beta_tray = np.empty(m+1)
+    beta_tray[0] = beta0
+    for n in range(m):
+        beta_tray[n+1] = cir_exacta(beta_tray[n], nu, mu, sigma, dt, rng=rng)
+    return beta_tray
+
+# SIRS Euler explícito
+def sirs_euler(S0, I0, R0, beta_traj, delta, alpha, dt):
+    m = len(beta_traj)-1
+    S = np.empty(m+1)
+    I = np.empty(m+1)
+    R = np.empty(m+1)
+    S[0], I[0], R[0] = S0, I0, R0
+    for n in range(m):
+        b = beta_traj[n]
+        S[n+1] = S[n] + dt*(delta*R[n] - b*S[n]*I[n])
+        I[n+1] = I[n] + dt*(b*S[n]*I[n] - alpha*I[n])
+        R[n+1] = R[n] + dt*(alpha*I[n] - delta*R[n])
+    return S, I, R
+
+# Parámetros
+T = 50
+m = 5000
+n_traj = 200
+S0, I0, R0 = 0.99, 0.01, 0
+delta = 0.1
+alpha = 0.4  # tasa de recuperación
+beta0 = 1
+nu = 1
+mu = 1
+sigma = 0.3
+
+t_grid = np.linspace(0, T, m+1)
+rng = np.random.default_rng(seed=2)
+
+# Simular trayectorias
+all_S = np.empty((n_traj, m+1))
+all_I = np.empty((n_traj, m+1))
+all_R = np.empty((n_traj, m+1))
+all_beta = np.empty((n_traj, m+1))
+
+for j in range(n_traj):
+    beta_traj = sim_cir_exacta(beta0, nu, mu, sigma, T, m, rng)
+    all_beta[j,:] = beta_traj
+    S,I,R = sirs_euler(S0, I0, R0, beta_traj, delta, alpha, T/m)
+    all_S[j,:] = S
+    all_I[j,:] = I
+    all_R[j,:] = R
+
+# Graficar trayectorias y estadística
+def plot_traj_media_percentil(data, t_grid, title, ylabel, ax):
+    # percentil 95 y media
+    p95 = np.percentile(data, 95, axis=0)
+    p05 = np.percentile(data, 5, axis=0)
+    media = np.mean(data, axis=0)
+    
+    # 5 trayectorias
+    idx = np.random.choice(data.shape[0], size=5, replace=False)
+    colors = cm.tab10.colors  # paleta de 10 colores de matplotlib
+    for i, k in enumerate(idx):
+        ax.plot(t_grid, data[k], lw=1, alpha=0.8, color=colors[i % len(colors)])
+    
+    # Percentiles y media
+    ax.plot(t_grid, p95, lw=2.5, color="blue", label="Percentil 95%")
+    ax.plot(t_grid, p05, lw=2.5, color="red", label="Percentil 5%")
+    ax.plot(t_grid, media, lw=2, color="black", linestyle="--", label="Media")
+    
+    ax.set_title(title)
+    ax.set_xlabel("Tiempo t")
+    ax.set_ylabel(ylabel)
+    ax.grid(True, linestyle="--", alpha=0.6)
+    ax.legend()
+
+fig = plt.figure(figsize=(12,8))
+fig.suptitle(r'Aplicaciones estadísticas del modelo SIRS estocástico', fontsize=20)
+
+# Estética de las figuras
+w, h = 0.35, 0.35  
+hspace = 0.05       
+bottom_top = 0.55
+bottom_bottom = 0.1
+
+# Subplots
+ax1 = fig.add_axes([0.1, bottom_top, w, h])      
+ax2 = fig.add_axes([0.55, bottom_top, w, h])     
+ax3 = fig.add_axes([0.325, bottom_bottom, w, h]) 
+
+plot_traj_media_percentil(all_S, t_grid, 'S(t)', 'Fracción de población', ax1)
+plot_traj_media_percentil(all_I, t_grid, 'I(t)', 'Fracción de población', ax2)
+plot_traj_media_percentil(all_R, t_grid, 'R(t)', 'Fracción de población', ax3)
+
+plt.savefig("CIR_SIRS3.pdf", bbox_inches='tight')
+plt.show()

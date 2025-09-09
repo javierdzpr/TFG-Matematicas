@@ -1,0 +1,107 @@
+# CIR_SIRS1
+
+import numpy as np
+from scipy.stats import ncx2
+import matplotlib.pyplot as plt
+
+# Ajustar tamaño de la fuente
+plt.rcParams.update({
+    "font.size": 18,
+    "axes.titlesize": 20,
+    "axes.labelsize": 18,
+    "xtick.labelsize": 18,
+    "ytick.labelsize": 18,
+    "legend.fontsize": 16
+})
+
+# Simulación exacta CIR
+def cir_exacta(beta, nu, mu, sigma, dt, rng=None):
+    if rng is None: rng = np.random.default_rng()
+    c = (sigma**2 * (1 - np.exp(-nu*dt))) / (4*nu)
+    d = 4*nu*mu / sigma**2
+    kappa = (4*nu * np.exp(-nu*dt) / (sigma**2 * (1 - np.exp(-nu*dt)))) * beta
+    Z = ncx2.rvs(df=d, nc=kappa, random_state=rng)
+    return c * Z
+
+def sim_cir_exacta(beta0, nu, mu, sigma, T, m, rng=None):
+    if rng is None: rng = np.random.default_rng()
+    dt = T / m
+    beta_tray = np.empty(m+1)
+    beta_tray[0] = beta0
+    for n in range(m):
+        beta_tray[n+1] = cir_exacta(beta_tray[n], nu, mu, sigma, dt, rng=rng)
+    return beta_tray
+
+# SIRS Euler explícito 
+def sirs_euler(S0, I0, R0, beta_traj, delta, alpha, dt):
+    m = len(beta_traj)-1
+    S = np.empty(m+1)
+    I = np.empty(m+1)
+    R = np.empty(m+1)
+    S[0], I[0], R[0] = S0, I0, R0
+    for n in range(m):
+        b = beta_traj[n]
+        S[n+1] = S[n] + dt*(delta*R[n] - b*S[n]*I[n])
+        I[n+1] = I[n] + dt*(b*S[n]*I[n] - alpha*I[n])
+        R[n+1] = R[n] + dt*(alpha*I[n] - delta*R[n])
+    return S, I, R
+
+# Parámetros
+T = 50
+m = 5000
+dt = T/m
+beta0 = 0.65
+mu = 1
+rng = np.random.default_rng(seed=2)
+
+S0, I0, R0 = 0.99, 0.01, 0.0
+delta = 0.1
+alpha = 0.4
+
+# (nu, sigma)
+params = [
+    (2, 0.1),  # Alta nu, baja sigma
+    (2, 0.3),  # Alta nu, alta sigma
+    (0.2, 0.1), # Baja nu, baja sigma
+    (0.2, 0.3)  # Baja nu, alta sigma
+]
+
+# Simular trayectorias
+cir_trajs = []
+sirs_trajs = []
+
+for nu, sigma in params:
+    beta_tray = sim_cir_exacta(beta0, nu, mu, sigma, T, m, rng)
+    S, I, R = sirs_euler(S0, I0, R0, beta_tray, delta, alpha, dt)
+    cir_trajs.append(beta_tray)
+    sirs_trajs.append((S,I,R))
+
+t_grid = np.linspace(0, T, m+1)
+
+# Graficar trayectorias
+fig, axes = plt.subplots(2, 2, figsize=(16,12))
+fig.suptitle(r'Aproximación de la solución del modelo SIRS estocástico para una trayectoria del proceso CIR $\{\tilde{\beta}(t):t\in[0,50]\}$', fontsize=20)
+
+titles = [
+    r'$\nu_{\tilde{\beta}}=2$, $\sigma_{\tilde{\beta}}=0.1$ ($h=0.01$)',
+    r'$\nu_{\tilde{\beta}}=2$, $\sigma_{\tilde{\beta}}=0.3$ ($h=0.01$)',
+    r'$\nu_{\tilde{\beta}}=0.2$, $\sigma_{\tilde{\beta}}=0.1$ ($h=0.01$)',
+    r'$\nu_{\tilde{\beta}}=0.2$, $\sigma_{\tilde{\beta}}=0.3$ ($h=0.01$)'
+]
+
+for idx, ax in enumerate(axes.flat):
+    S,I,R = sirs_trajs[idx]
+    beta_tray = cir_trajs[idx]
+    
+    ax.plot(t_grid, S, color='tab:blue', label='S(t)')
+    ax.plot(t_grid, I, color='tab:orange', label='I(t)')
+    ax.plot(t_grid, R, color='tab:green', label='R(t)')
+    ax.set_title(f"SIRS con {titles[idx]}")
+    ax.set_xlabel("Tiempo t", fontsize=18)
+    ax.set_ylabel("Fracción de población", fontsize=18)
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.legend(loc='upper right')
+
+plt.tight_layout()
+plt.savefig("CIR_SIRS1.pdf", bbox_inches='tight')
+plt.show()

@@ -1,0 +1,94 @@
+#CIR
+
+import numpy as np
+from scipy.stats import ncx2
+import matplotlib.pyplot as plt
+
+# Ajustar tamaño de la fuente
+plt.rcParams.update({
+    "font.size": 18,
+    "axes.titlesize": 20,
+    "axes.labelsize": 18,
+    "xtick.labelsize": 18,
+    "ytick.labelsize": 18,
+    "legend.fontsize": 16
+})
+
+# Simulación exacta CIR
+def cir_exacta(beta, nu, mu, sigma, dt, rng=None):
+    if rng is None: rng = np.random.default_rng()
+    c = (sigma**2 * (1 - np.exp(-nu*dt))) / (4*nu)
+    d = 4*nu*mu / sigma**2
+    kappa = (4*nu * np.exp(-nu*dt) / (sigma**2 * (1 - np.exp(-nu*dt)))) * beta
+    Z = ncx2.rvs(df=d, nc=kappa, random_state=rng)
+    return c * Z
+
+def sim_cir_exacta(beta0, nu, mu, sigma, T, m, rng=None):
+    if rng is None: rng = np.random.default_rng()
+    dt = T / m
+    beta_tray = np.empty(m+1)
+    beta_tray[0] = beta0
+    for n in range(m):
+        beta_tray[n+1] = cir_exacta(beta_tray[n], nu, mu, sigma, dt, rng=rng)
+    return beta_tray
+
+# Parámetros
+T = 50
+m = 5000
+n_traj = 1
+beta0 = 0.65
+
+t_grid = np.linspace(0, T, m+1)
+rng = np.random.default_rng(seed=2)
+
+# Simular trayectorias con diferentes parámetros 
+all_beta = np.empty((n_traj, m+1))
+for j in range(n_traj):
+    x = sim_cir_exacta(beta0, 2, 1, 0.1, T, m, rng)
+    y = sim_cir_exacta(beta0, 2, 1, 0.3, T, m, rng)
+    z = sim_cir_exacta(beta0, 0.2, 1, 0.1, T, m, rng)
+    u = sim_cir_exacta(beta0, 0.2, 1, 0.3, T, m, rng)
+
+# Graficar trayectorias
+fig, axes = plt.subplots(2, 2, figsize=(14,10))
+fig.suptitle(r'Simulación de procesos CIR variando los parámetros $\nu_{\tilde{\beta}}$ y $\sigma_{\tilde{\beta}}$', fontsize=20)
+
+# Caso 1: Alta ν, baja σ
+axes[0,0].plot(t_grid, x, alpha=0.7, lw=1, 
+               label=r'Proceso CIR $\tilde{\beta}(t)$')
+axes[0,0].axhline(1, color='red', linestyle='--', label=r'$\mu_{\tilde{\beta}}$')
+axes[0,0].set_title(r'Trayectoria con $\nu_{\tilde{\beta}}=2$ y $\sigma_{\tilde{\beta}}=0.1$ ($h=0.01$)', fontsize=18)
+axes[0,0].set_xlabel('Tiempo t', fontsize=18)
+axes[0,0].grid(True, linestyle='--', alpha=0.5)
+axes[0,0].legend()
+
+# Caso 2: Alta ν, alta σ
+axes[0,1].plot(t_grid, y, alpha=0.7, lw=1, 
+               label=r'Proceso CIR $\tilde{\beta}(t)$')
+axes[0,1].axhline(1, color='red', linestyle='--', label=r'$\mu_{\tilde{\beta}}$')
+axes[0,1].set_title(r'Trayectoria con $\nu_{\tilde{\beta}}=2$ y $\sigma_{\tilde{\beta}}=0.3$ ($h=0.01$)', fontsize=18)
+axes[0,1].set_xlabel('Tiempo t', fontsize=18)
+axes[0,1].grid(True, linestyle='--', alpha=0.5)
+axes[0,1].legend()
+
+# Caso 3: Baja ν, baja σ
+axes[1,0].plot(t_grid, z, alpha=0.7, lw=1, 
+               label=r'Proceso CIR $\tilde{\beta}(t)$')
+axes[1,0].axhline(1, color='red', linestyle='--', label=r'$\mu_{\tilde{\beta}}$')
+axes[1,0].set_title(r'Trayectoria con $\nu_{\tilde{\beta}}=0.2$ y $\sigma_{\tilde{\beta}}=0.1$ ($h=0.01$)', fontsize=18)
+axes[1,0].set_xlabel('Tiempo t', fontsize=18)
+axes[1,0].grid(True, linestyle='--', alpha=0.5)
+axes[1,0].legend()
+
+# Caso 4: Baja ν, alta σ
+axes[1,1].plot(t_grid, u, alpha=0.7, lw=1, 
+               label=r'Proceso CIR $\tilde{\beta}(t)$')
+axes[1,1].axhline(1, color='red', linestyle='--', label=r'$\mu_{\tilde{\beta}}$')
+axes[1,1].set_title(r'Trayectoria con $\nu_{\tilde{\beta}}=0.2$ y $\sigma_{\tilde{\beta}}=0.3$ ($h=0.01$)', fontsize=18)
+axes[1,1].set_xlabel('Tiempo t', fontsize=18)
+axes[1,1].grid(True, linestyle='--', alpha=0.5)
+axes[1,1].legend()
+
+plt.tight_layout()
+plt.savefig("CIR.pdf", bbox_inches='tight')
+plt.show()

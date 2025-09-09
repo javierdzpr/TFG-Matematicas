@@ -1,0 +1,42 @@
+#SIS4
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Ajustar tamaño de la fuente
+plt.rcParams.update({
+    "font.size": 16,
+    "axes.titlesize": 18,
+    "axes.labelsize": 16,
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14
+})
+
+# Parámetros
+beta = 0.3
+alpha = 0.4
+
+# Puntos de la malla
+I_vals = np.linspace(0, 1, 20)
+S_vals = 1 - I_vals
+
+# Campo vectorial
+dI = beta * S_vals * I_vals - alpha * I_vals
+dS = -dI
+
+# Diagrama de fase
+plt.figure(figsize=(7,6))
+plt.quiver(S_vals, I_vals, dS, dI, color=[0, 0.4470, 0.7410],
+           angles='xy', scale_units='xy', scale=None, width=0.005)
+
+plt.plot(1,0,'ro',markersize=6, label='Equilibrio libre de enfermedad (1,0)')
+
+plt.xlabel('S',fontsize=16)
+plt.ylabel('I',fontsize=16)
+plt.title(f'Diagrama de fase S-I del modelo SIS, \n $\\beta={beta}$, $\\alpha={alpha}$')
+plt.legend()
+plt.axis([-0.05,1.05,-0.05,1.05])
+plt.grid(True)
+plt.savefig("SIS4.pdf", bbox_inches='tight')
+plt.show()
